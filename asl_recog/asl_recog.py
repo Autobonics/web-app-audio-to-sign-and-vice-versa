@@ -105,7 +105,7 @@ class AslRecogApp:
 
 def main():
     root = tkinter.Tk()
-    asl-recogApp(root, "asl-recog")
+    AslRecogApp(root, "AslRecog")
 
 
 if __name__ == "__main__":
