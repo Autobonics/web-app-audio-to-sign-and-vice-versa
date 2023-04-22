@@ -7,8 +7,7 @@ import mediapipe as mp
 import torch
 from PIL import Image, ImageTk
 from typing import Tuple, Union, List
-from gloss_proc import proc_landmarks, Landmarks, GlossProcess
-from gloss_proc.utils import draw_landmarks
+from gloss_proc import proc_landmarks, Landmarks, GlossProcess, draw_landmarks
 
 mp_holistic = mp.solutions.holistic
 mp_drawing = mp.solutions.drawing_utils
@@ -79,6 +78,7 @@ class AslRecogApp:
             return
         if (len(self.seq)+1 == self.max_seq_len):
             res = self.vid_proc.get_lm(frame)
+            exit(0)
             if res:
                 self.seq.append(proc_landmarks(res))
                 proc_seq = torch.from_numpy(
