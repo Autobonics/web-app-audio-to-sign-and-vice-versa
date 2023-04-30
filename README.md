@@ -1,42 +1,55 @@
-# Speech to ASL
-### Server setup
-- create venv in speech_asl_server
-using 
+# asl-recog
+LSTM model to recognize ASL gloss
+
+### Data collection
+- create venv using 
 
 ```powershell
-python -m venv speech_asl
+python -m venv asl-recog-venv
 ```
 
 - Activate virtual environment
     - windows powershell
         ```powershell
-        .\speech_asl\Scripts\Activate.ps1
+        .\asl-recog-venv\Scripts\Activate.ps1
         ```
     - Linux bash
         ```bash
-        source ./speech_asl/bin/activate
+        source ./asl-recog-venv/bin/activate
         ```
 - install the requirements using pip
 
 ```bash
     pip install -r requirements.txt
 ```
-- Run the flask app
+- Run the cli data generation tool
 
 ```bash
-python main.py
+python gen_cli.py  -h 
 ```
 
-## Setting up Client
-
-- change to speech-asl-cleint directory
-- install reqiured npm packages
+- Add the list of gloss in gloss.txt file and invoke the cli program with -r argument
 
 ```bash
-    npm i
- ```
-- start devlopment server by running
-```bash
-    npm run dev
+python gen_cli.py  -r
 ```
-- Visit http://localhost:5173 on your browser
+
+OR
+
+- provide each gloss name as argument with -g flag
+
+```bash
+python gen_cli.py  -g "Happy Birthday"
+```
+
+- Also use -v flag to change the number of videos recorded for each gloss
+
+```bash
+python gen_cli.py  -v 15
+```
+- Also use -f flag to change the number of frames in each video
+
+```bash
+python gen_cli.py  -f 30
+```
+
