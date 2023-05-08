@@ -17,6 +17,8 @@ python -m venv asl-recog-venv
         ```bash
         source ./asl-recog-venv/bin/activate
         ```
+
+
 - install the requirements using pip
 
 ```bash
@@ -34,6 +36,38 @@ python gen_cli.py  -h
 python gen_cli.py  -r
 ```
 
+- glosses from gloss.txt can be indexed and generated using -i and -c flag.
+
+    - Eg:-  
+    contents in gloss.txt
+    ``` 
+      0| Hi
+      1| Hello 
+      2| How are you
+      3| Happy birthday
+      4| Help me
+      5| turn around
+      6| see you later
+      7| what is your name
+    ```
+
+    - c represents the number of gloss in gloss.txt to generate.
+       
+        ```bash
+        python gen_cli.py - c 5
+        ```
+    this generates data of gloss from 0 to 5
+    index 0 -> Hi
+    to 
+    index 5 -> Turn around
+    - i represents the starting index of gloss to generate in gloss.txt to generate.
+       
+        ```bash
+        python gen_cli.py - c 5 -i 2
+        ```
+    this generates data of gloss from 2 to 5
+    where generation starts from  gloss index 2 -> How are you
+    to index 5 -> turn around
 OR
 
 - provide each gloss name as argument with -g flag
@@ -52,4 +86,3 @@ python gen_cli.py  -v 15
 ```bash
 python gen_cli.py  -f 30
 ```
-

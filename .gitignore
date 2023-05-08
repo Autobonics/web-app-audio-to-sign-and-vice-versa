@@ -5,6 +5,5 @@ img_backup
 img_data
 gloss_transformer
 test_img
-runs
 *.zipd
 .vscode

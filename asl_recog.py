@@ -88,8 +88,9 @@ class AslRecogApp:
                     np.array(self.seq)).float().to(self.device)
                 self.model.eval()
                 with torch.no_grad():
-                    out = self.model(proc_seq)
-                res_class = torch.argmax(torch.max(out, dim=0).values)
+                    x=proc_seq.unsqueeze(0)
+                    out = self.model(x)
+                res_class = torch.argmax(out,dim=1)
                 self.tts.say(self.classes[res_class.item()])
                 self.tts.runAndWait()
                 self.tts.stop()
