@@ -1,11 +1,12 @@
 import cv2
 import pickle
 import torch
-import tkinter
 import pyttsx3
+import tkinter as tk
 import numpy as np
 import pandas as pd
 import mediapipe as mp
+from tkinter import ttk
 from PIL import Image, ImageTk
 from typing import Tuple, Union, List
 from gloss_proc import proc_landmarks, Landmarks, GlossProcess, draw_landmarks
@@ -59,6 +60,7 @@ class AslRecogApp:
         self.window.title(title)
         self.max_seq_len = max_seq_len
         self.image = ImageTk.PhotoImage(file="asl-recog.png")
+        self.capturing = False
         self.seq: List[np.ndarray] = []
         self.device = torch.device(
             "cuda" if torch.cuda.is_available() else "cpu")
@@ -66,52 +68,76 @@ class AslRecogApp:
         self.gp = GlossProcess.load_checkpoint()
         self.classes = self.gp.glosses
         self.res_text: str = ""
-        self.canvas = tkinter.Canvas(
+        self.canvas = tk.Canvas(
             self.window, width=self.vid_proc.width, height=self.vid_proc.height)
-        self.canvas.pack()
-        self.text_label = tkinter.Label(self.window, text="Res text : ")
-        self.text_label.pack()
-        self.text_box = tkinter.Text(self.window, height=10)
-        self.text_box.pack()
+        self.text_label = ttk.Label(self.window, text="Res text : ")
+        self.text_box = tk.Text(self.window, height=10)
+
+        # Landing Page
+        self.landing_page = tk.Frame(
+            self.window, width=self.vid_proc.width, height=self.vid_proc.height)
+        self.landing_page.pack()
+        landing_image = Image.open("asl-recog.png")
+        landing_image = landing_image.resize((500, 500), Image.ANTIALIAS)
+        landing_image = ImageTk.PhotoImage(landing_image)
+        landing_label = ttk.Label(self.landing_page)
+        landing_label.configure(image=landing_image)
+        landing_label.pack(pady=50)
+        start_button = ttk.Button(
+            self.landing_page, text="Start Capturing", command=self.start_capturing)
+        start_button.pack(pady=20)
+
         self.update()
         self.window.mainloop()
 
+    def start_capturing(self):
+        self.capturing = True
+        self.landing_page.pack_forget()
+        self.canvas.pack()
+        self.text_label.pack()
+        self.text_box.pack()
+        self.update()
+
     def update(self):
-        success, frame = self.vid_proc.get_frame()
-        if not success:
-            return
-        if (len(self.seq)+1 == self.max_seq_len):
+        if self.capturing:
+            success, frame = self.vid_proc.get_frame()
+            if not success:
+                return
+            if (len(self.seq)+1 == self.max_seq_len):
+                res = self.vid_proc.get_lm(frame)
+                if res:
+                    self.seq.append(proc_landmarks(res))
+                    proc_seq = torch.from_numpy(
+                        np.array(self.seq)).float().to(self.device)
+                    self.model.eval()
+                    with torch.no_grad():
+                        x = proc_seq.unsqueeze(0)
+                        out = self.model(x)
+                    res_class = torch.argmax(out, dim=1)
+                    self.tts.say(self.classes[res_class.item()])
+                    self.tts.runAndWait()
+                    self.tts.stop()
+                    self.res_text += self.classes[res_class.item()]+".\n"
+                    self.text_box.delete("1.0", tk.END)
+                    self.text_box.insert("1.0", chars=self.res_text)
+                    self.seq = []
+                    if len(self.res_text.splitlines()) > 5:
+                        self.res_text = ""
             res = self.vid_proc.get_lm(frame)
             if res:
                 self.seq.append(proc_landmarks(res))
-                proc_seq = torch.from_numpy(
-                    np.array(self.seq)).float().to(self.device)
-                self.model.eval()
-                with torch.no_grad():
-                    x=proc_seq.unsqueeze(0)
-                    out = self.model(x)
-                res_class = torch.argmax(out,dim=1)
-                self.tts.say(self.classes[res_class.item()])
-                self.tts.runAndWait()
-                self.tts.stop()
-                self.res_text += self.classes[res_class.item()]+".\n"
-                self.text_box.delete("1.0", tkinter.END)
-                self.text_box.insert("1.0", chars=self.res_text)
-                self.seq = []
-                if len(self.res_text.splitlines()) > 5:
-                    self.res_text = ""
-        res = self.vid_proc.get_lm(frame)
-        if res:
-            self.seq.append(proc_landmarks(res))
-        frame = frame if not res else self.vid_proc.draw_lm(frame, res)
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        self.image = ImageTk.PhotoImage(image=Image.fromarray(frame))
-        self.canvas.create_image(0, 0, image=self.image, anchor=tkinter.NW)
-        self.window.after(1, self.update)
+            frame = frame if not res else self.vid_proc.draw_lm(frame, res)
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            self.image = ImageTk.PhotoImage(image=Image.fromarray(frame))
+            self.canvas.create_image(0, 0, image=self.image, anchor=tk.NW)
+            self.window.after(1, self.update)
 
 
 def main():
-    root = tkinter.Tk()
+    root = tk.Tk()
+    style = ttk.Style()
+    style.configure("TLabel", font=("Arial", 14), foreground="blue")
+    style.configure("TText", font=("Arial", 12), background="lightgray")
     AslRecogApp(root, "AslRecog")
 
 
