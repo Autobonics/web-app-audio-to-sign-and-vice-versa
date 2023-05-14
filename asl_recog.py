@@ -4,6 +4,7 @@ import sys
 import pickle
 import torch
 import pyttsx3
+import qdarkstyle
 import numpy as np
 import pandas as pd
 import mediapipe as mp
@@ -14,6 +15,7 @@ from typing import Tuple, Union, List
 from gloss_proc import proc_landmarks, Landmarks, GlossProcess, draw_landmarks
 from sp_proc import SpProc
 from sp_proc.sp_utils import lm_mp
+
 mp_holistic = mp.solutions.holistic
 mp_drawing = mp.solutions.drawing_utils
 mp_drawing_styles = mp.solutions.drawing_styles
@@ -77,32 +79,59 @@ class AslRecogApp(QtWidgets.QMainWindow):
         self.setCentralWidget(self.central_widget)
         self.central_layout = QtWidgets.QVBoxLayout(self.central_widget)
 
-        self.show_landing_page()
-
-        self.image_label = QtWidgets.QLabel(self)
+        self.image_label = QtWidgets.QLabel(self.central_widget)
         self.central_layout.addWidget(self.image_label)
+
+        title_label = QtWidgets.QLabel(
+            "ASL Recognition Tool", self.central_widget)
+        title_label.setAlignment(QtCore.Qt.AlignCenter)
+        title_label.setStyleSheet(
+            "color: #ffffff;"
+            "font-size: 36px;"
+            "font-weight: bold;"
+        )
+        self.central_layout.addWidget(title_label)
+
+        description = QtWidgets.QLabel(
+            "This app is used to recognize sign language sentences from video sequences.", self.central_widget)
+        description.setAlignment(QtCore.Qt.AlignCenter)
+        description.setStyleSheet(
+            "color: #ffffff;"
+            "font-size: 18px;"
+        )
+        self.central_layout.addWidget(description)
 
         self.start_button = QtWidgets.QPushButton(self)
         self.start_button.setText("Start Capturing")
+        self.start_button.setStyleSheet(
+            "background-color: #ffffff;"
+            "color: #1e1e1e;"
+            "font-size: 18px;"
+            "font-weight: bold;"
+            "padding: 10px 20px;"
+            "border-radius: 10px;"
+        )
         self.start_button.clicked.connect(self.start_capturing)
         self.central_layout.addWidget(self.start_button)
-
-        self.text_box = QtWidgets.QPlainTextEdit(self)
-        self.text_box.setReadOnly(True)
-        self.central_layout.addWidget(self.text_box)
 
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.update)
         self.timer.start(1)
 
-    def show_landing_page(self):
-        image_path = "asl-recog.png"
-        self.central_widget.setStyleSheet(
-            f"background-image: url({image_path});")
-
     def start_capturing(self):
         self.capturing = True
         self.start_button.hide()
+        self.res_textbox = QtWidgets.QTextEdit(self.central_widget)
+        self.res_textbox.setReadOnly(True)
+        self.res_textbox.setStyleSheet(
+            "background-color: #ffffff;"
+            "color: #1e1e1e;"
+            "font-size: 18px;"
+            "font-weight: bold;"
+            "padding: 10px 20px;"
+            "border-radius: 10px;"
+        )
+        self.central_layout.addWidget(self.res_textbox)
 
     def update(self):
         if self.capturing:
@@ -124,8 +153,7 @@ class AslRecogApp(QtWidgets.QMainWindow):
                     self.tts.runAndWait()
                     self.tts.stop()
                     self.res_text += self.classes[res_class.item()]+".\n"
-                    self.text_box.clear()
-                    self.text_box.insertPlainText(self.res_text)
+                    self.res_textbox.setPlainText(self.res_text)
                     self.seq = []
                     if len(self.res_text.splitlines()) > 5:
                         self.res_text = ""
@@ -136,14 +164,16 @@ class AslRecogApp(QtWidgets.QMainWindow):
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             height, width, channel = frame.shape
             bytesPerLine = 3 * width
-            self.image = QImage(frame.data, width, height,
-                                bytesPerLine, QImage.Format_RGB888)
-            self.image_label.setPixmap(QPixmap.fromImage(self.image))
+            image = QImage(frame.data, width, height,
+                           bytesPerLine, QImage.Format_RGB888)
+            pixmap = QPixmap.fromImage(image)
+            self.image_label.setPixmap(pixmap)
             self.image_label.setScaledContents(True)
 
 
 def main():
     app = QtWidgets.QApplication(sys.argv)
+    app.setStyleSheet(qdarkstyle.load_stylesheet_pyqt5())
     asl_recog_app = AslRecogApp()
     asl_recog_app.show()
     sys.exit(app.exec_())
