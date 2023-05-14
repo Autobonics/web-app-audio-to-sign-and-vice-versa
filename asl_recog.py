@@ -1,13 +1,15 @@
+import os
 import cv2
+import sys
 import pickle
 import torch
 import pyttsx3
-import tkinter as tk
 import numpy as np
 import pandas as pd
 import mediapipe as mp
-from tkinter import ttk
-from PIL import Image, ImageTk
+from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5.QtGui import QImage, QPixmap
+from PyQt5.QtCore import QTimer
 from typing import Tuple, Union, List
 from gloss_proc import proc_landmarks, Landmarks, GlossProcess, draw_landmarks
 from sp_proc import SpProc
@@ -51,15 +53,14 @@ class VidProcess:
             self.cap.release()
 
 
-class AslRecogApp:
-    def __init__(self, window, title, max_seq_len: int = 24, model: str = "asl-recog_lstm.pt"):
-        self.window = window
+class AslRecogApp(QtWidgets.QMainWindow):
+    def __init__(self, parent=None, max_seq_len: int = 24, model: str = "asl-recog_lstm.pt"):
+        super(AslRecogApp, self).__init__(parent)
         self.vid_proc = VidProcess()
         self.tts = pyttsx3.init()
         self.tts.setProperty('rate', 125)
-        self.window.title(title)
         self.max_seq_len = max_seq_len
-        self.image = ImageTk.PhotoImage(file="asl-recog.png")
+        self.image = None
         self.capturing = False
         self.seq: List[np.ndarray] = []
         self.device = torch.device(
@@ -68,35 +69,40 @@ class AslRecogApp:
         self.gp = GlossProcess.load_checkpoint()
         self.classes = self.gp.glosses
         self.res_text: str = ""
-        self.canvas = tk.Canvas(
-            self.window, width=self.vid_proc.width, height=self.vid_proc.height)
-        self.text_label = ttk.Label(self.window, text="Res text : ")
-        self.text_box = tk.Text(self.window, height=10)
 
-        # Landing Page
-        self.landing_page = tk.Frame(
-            self.window, width=self.vid_proc.width, height=self.vid_proc.height)
-        self.landing_page.pack()
-        landing_image = Image.open("asl-recog.png")
-        landing_image = landing_image.resize((500, 500), Image.ANTIALIAS)
-        landing_image = ImageTk.PhotoImage(landing_image)
-        landing_label = ttk.Label(self.landing_page)
-        landing_label.configure(image=landing_image)
-        landing_label.pack(pady=50)
-        start_button = ttk.Button(
-            self.landing_page, text="Start Capturing", command=self.start_capturing)
-        start_button.pack(pady=20)
+        self.setWindowTitle("AslRecog")
+        self.setFixedSize(800, 600)
 
-        self.update()
-        self.window.mainloop()
+        self.central_widget = QtWidgets.QWidget(self)
+        self.setCentralWidget(self.central_widget)
+        self.central_layout = QtWidgets.QVBoxLayout(self.central_widget)
+
+        self.show_landing_page()
+
+        self.image_label = QtWidgets.QLabel(self)
+        self.central_layout.addWidget(self.image_label)
+
+        self.start_button = QtWidgets.QPushButton(self)
+        self.start_button.setText("Start Capturing")
+        self.start_button.clicked.connect(self.start_capturing)
+        self.central_layout.addWidget(self.start_button)
+
+        self.text_box = QtWidgets.QPlainTextEdit(self)
+        self.text_box.setReadOnly(True)
+        self.central_layout.addWidget(self.text_box)
+
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.update)
+        self.timer.start(1)
+
+    def show_landing_page(self):
+        image_path = "asl-recog.png"
+        self.central_widget.setStyleSheet(
+            f"background-image: url({image_path});")
 
     def start_capturing(self):
         self.capturing = True
-        self.landing_page.pack_forget()
-        self.canvas.pack()
-        self.text_label.pack()
-        self.text_box.pack()
-        self.update()
+        self.start_button.hide()
 
     def update(self):
         if self.capturing:
@@ -118,8 +124,8 @@ class AslRecogApp:
                     self.tts.runAndWait()
                     self.tts.stop()
                     self.res_text += self.classes[res_class.item()]+".\n"
-                    self.text_box.delete("1.0", tk.END)
-                    self.text_box.insert("1.0", chars=self.res_text)
+                    self.text_box.clear()
+                    self.text_box.insertPlainText(self.res_text)
                     self.seq = []
                     if len(self.res_text.splitlines()) > 5:
                         self.res_text = ""
@@ -128,17 +134,19 @@ class AslRecogApp:
                 self.seq.append(proc_landmarks(res))
             frame = frame if not res else self.vid_proc.draw_lm(frame, res)
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            self.image = ImageTk.PhotoImage(image=Image.fromarray(frame))
-            self.canvas.create_image(0, 0, image=self.image, anchor=tk.NW)
-            self.window.after(1, self.update)
+            height, width, channel = frame.shape
+            bytesPerLine = 3 * width
+            self.image = QImage(frame.data, width, height,
+                                bytesPerLine, QImage.Format_RGB888)
+            self.image_label.setPixmap(QPixmap.fromImage(self.image))
+            self.image_label.setScaledContents(True)
 
 
 def main():
-    root = tk.Tk()
-    style = ttk.Style()
-    style.configure("TLabel", font=("Arial", 14), foreground="blue")
-    style.configure("TText", font=("Arial", 12), background="lightgray")
-    AslRecogApp(root, "AslRecog")
+    app = QtWidgets.QApplication(sys.argv)
+    asl_recog_app = AslRecogApp()
+    asl_recog_app.show()
+    sys.exit(app.exec_())
 
 
 if __name__ == "__main__":
